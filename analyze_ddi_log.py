@@ -287,22 +287,55 @@ def analyze_uuid(messages: List[Dict[str, Any]], expected_interval_minutes: int 
             daily_voltage[key] = {"samples": []}
         daily_voltage[key]["samples"].append((ts, v))
 
-    # compute per-day stats
+    # compute per-day stats. The daily drop is normalized to a 24-hour rate
+    # based on the actual observed span within each calendar day.
     for key, info in daily_voltage.items():
         samples = sorted(info["samples"], key=lambda x: x[0])
         vals = [v for (_, v) in samples]
         if len(vals) >= 1:
+            first_ts = samples[0][0]
+            last_ts = samples[-1][0]
             first_v = vals[0]
             last_v = vals[-1]
             min_v = min(vals)
             max_v = max(vals)
             avg_v = sum(vals) / len(vals)
-            info.update({"date": key, "first_voltage": first_v, "last_voltage": last_v, "voltage_drop": first_v - last_v, "min_voltage": min_v, "max_voltage": max_v, "avg_voltage": avg_v, "voltage_sample_count": len(vals)})
+            voltage_drop = first_v - last_v
+            observed_hours = (last_ts - first_ts).total_seconds() / 3600
+            voltage_drop_per_24h = (voltage_drop / observed_hours * 24) if observed_hours > 0 else None
+            info.update({
+                "date": key,
+                "first_voltage": first_v,
+                "last_voltage": last_v,
+                "voltage_drop": voltage_drop,
+                "observed_hours": observed_hours,
+                "voltage_drop_per_24h": voltage_drop_per_24h,
+                "min_voltage": min_v,
+                "max_voltage": max_v,
+                "avg_voltage": avg_v,
+                "voltage_sample_count": len(vals),
+            })
         else:
-            info.update({"date": key, "first_voltage": None, "last_voltage": None, "voltage_drop": None, "min_voltage": None, "max_voltage": None, "avg_voltage": None, "voltage_sample_count": 0})
+            info.update({
+                "date": key,
+                "first_voltage": None,
+                "last_voltage": None,
+                "voltage_drop": None,
+                "observed_hours": None,
+                "voltage_drop_per_24h": None,
+                "min_voltage": None,
+                "max_voltage": None,
+                "avg_voltage": None,
+                "voltage_sample_count": 0,
+            })
 
-    # compute average daily voltage drop (only days with at least 2 samples)
-    drops = [info["voltage_drop"] for info in daily_voltage.values() if info.get("voltage_sample_count", 0) >= 2 and info.get("voltage_drop") is not None]
+    # compute average daily voltage drop as a normalized 24-hour rate
+    # (only days with at least 2 samples and non-zero observed time)
+    drops = [
+        info["voltage_drop_per_24h"]
+        for info in daily_voltage.values()
+        if info.get("voltage_sample_count", 0) >= 2 and info.get("voltage_drop_per_24h") is not None
+    ]
     avg_daily_voltage_drop = (sum(drops) / len(drops)) if drops else None
 
     # overall first/last/min/max voltage
@@ -419,13 +452,13 @@ def print_summary_console(summaries: List[dict]):
                 "Actual": s.get("report_event_count", 0),
                 "Rate%": round(s.get("delivery_rate_percent", 0.0), 2),
                 "Miss": s.get("missing_event_count", 0),
-                "AvgDrop": (round(s.get("avg_daily_voltage_drop"), 6) if isinstance(s.get("avg_daily_voltage_drop"), float) else "NA"),
+                "AvgDrop/24h": (round(s.get("avg_daily_voltage_drop"), 6) if isinstance(s.get("avg_daily_voltage_drop"), float) else "NA"),
             })
         df = pd.DataFrame(rows)
         print(df.to_string(index=False))
     except Exception:
         # Plain text table
-        hdr = ("UUID", "Expected", "Actual", "Rate%", "Miss", "Avg Voltage Drop/Day")
+        hdr = ("UUID", "Expected", "Actual", "Rate%", "Miss", "Avg Voltage Drop/24h")
         print(" | ".join(hdr))
         print("-" * 80)
         for s in summaries:
