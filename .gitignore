@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Raw gateway logs can be large and regenerated from source devices.
+ddi_relay.log.*
+
+# Local secrets/config.
+.env
+.env.*
