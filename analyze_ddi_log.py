@@ -20,6 +20,30 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Tuple, Dict, Any
 
 
+def parse_uuid_interval_overrides(values: Optional[List[str]]) -> Dict[str, int]:
+    """Parse UUID=minutes values from CLI arguments."""
+    overrides: Dict[str, int] = {}
+    if not values:
+        return overrides
+
+    for value in values:
+        if "=" not in value:
+            raise ValueError(f"Expected UUID=minutes, got: {value}")
+        uuid, minutes_text = value.split("=", 1)
+        uuid = uuid.strip()
+        try:
+            minutes = int(minutes_text)
+        except ValueError as exc:
+            raise ValueError(f"Invalid minutes for {uuid}: {minutes_text}") from exc
+        if not uuid:
+            raise ValueError(f"Missing UUID in interval override: {value}")
+        if minutes <= 0:
+            raise ValueError(f"Interval minutes must be positive for {uuid}: {minutes}")
+        overrides[uuid.upper()] = minutes
+
+    return overrides
+
+
 def parse_timestamp(line: str) -> datetime:
     """Try to detect and parse a timestamp from the given log line.
 
@@ -374,6 +398,7 @@ def write_summary_csv(path: str, summaries: List[dict]):
     # New summary columns per user request
     fieldnames = [
         "uuid",
+        "expected_interval_minutes",
         "expected_event_count",
         "report_event_count",
         "delivery_rate_percent",
@@ -389,6 +414,7 @@ def write_summary_csv(path: str, summaries: List[dict]):
             avg_drop_val = (round(avg_drop, 6) if isinstance(avg_drop, float) else "NA")
             w.writerow({
                 "uuid": s["uuid"],
+                "expected_interval_minutes": s.get("expected_interval_minutes", 0),
                 "expected_event_count": s.get("expected_event_count", 0),
                 "report_event_count": s.get("report_event_count", 0),
                 "delivery_rate_percent": round(s.get("delivery_rate_percent", 0.0), 2),
@@ -448,6 +474,7 @@ def print_summary_console(summaries: List[dict]):
         for s in summaries:
             rows.append({
                 "UUID": s["uuid"],
+                "Interval": s.get("expected_interval_minutes", 0),
                 "Expected": s.get("expected_event_count", 0),
                 "Actual": s.get("report_event_count", 0),
                 "Rate%": round(s.get("delivery_rate_percent", 0.0), 2),
@@ -458,13 +485,14 @@ def print_summary_console(summaries: List[dict]):
         print(df.to_string(index=False))
     except Exception:
         # Plain text table
-        hdr = ("UUID", "Expected", "Actual", "Rate%", "Miss", "Avg Voltage Drop/24h")
+        hdr = ("UUID", "Interval", "Expected", "Actual", "Rate%", "Miss", "Avg Voltage Drop/24h")
         print(" | ".join(hdr))
         print("-" * 80)
         for s in summaries:
             avgdrop = (round(s.get("avg_daily_voltage_drop"), 6) if isinstance(s.get("avg_daily_voltage_drop"), float) else "NA")
             print(" | ".join([
                 s["uuid"],
+                str(s.get("expected_interval_minutes", 0)),
                 str(s.get("expected_event_count", 0)),
                 str(s.get("report_event_count", 0)),
                 f"{round(s.get('delivery_rate_percent',0.0),2)}",
@@ -489,8 +517,20 @@ def main(argv=None):
     p.add_argument("--export-summary-only", action="store_true", help="Only export summary CSV and skip detailed files")
     p.add_argument("--merge-window-seconds", type=int, default=2, help="Merge window in seconds for grouping messages into events")
     p.add_argument("--expected-interval-minutes", type=int, default=30)
+    p.add_argument(
+        "--expected-interval-by-uuid",
+        nargs="*",
+        default=[],
+        metavar="UUID=MINUTES",
+        help="Override expected interval for specific UUIDs, e.g. UUID1=5 UUID2=30",
+    )
     p.add_argument("--alert-threshold-minutes", type=int, default=45)
     args = p.parse_args(argv)
+
+    try:
+        interval_overrides = parse_uuid_interval_overrides(args.expected_interval_by_uuid)
+    except ValueError as exc:
+        p.error(str(exc))
 
     ssh_opts = None
     if args.ssh:
@@ -543,6 +583,7 @@ def main(argv=None):
     detail_rows = []
     events_details = []
     for u in args.uuid:
+        expected_interval_minutes = interval_overrides.get(u.upper(), args.expected_interval_minutes)
         try:
             msgs = filter_by_uuid(lines_with_source, u)
         except Exception as exc:
@@ -551,7 +592,7 @@ def main(argv=None):
 
         # group events with requested merge window
         events = group_report_events(msgs, max_interval_seconds=args.merge_window_seconds)
-        analysis = analyze_uuid(msgs, expected_interval_minutes=args.expected_interval_minutes, alert_threshold_minutes=args.alert_threshold_minutes)
+        analysis = analyze_uuid(msgs, expected_interval_minutes=expected_interval_minutes, alert_threshold_minutes=args.alert_threshold_minutes)
         # override events with chosen merge window events
         analysis["events"] = events
         analysis["report_event_count"] = len(events)
@@ -561,11 +602,12 @@ def main(argv=None):
             last_event = events[-1]["end_time"] if events else None
             if first_event and last_event:
                 total_observed = last_event - first_event
-                expected_n = int(total_observed.total_seconds() // (args.expected_interval_minutes * 60)) + 1
+                expected_n = int(total_observed.total_seconds() // (expected_interval_minutes * 60)) + 1
             else:
                 expected_n = 0
         else:
             expected_n = analysis.get("expected_event_count", 0)
+        analysis["expected_interval_minutes"] = expected_interval_minutes
         analysis["expected_event_count"] = expected_n
         analysis["delivery_rate_percent"] = (analysis.get("report_event_count", 0) / expected_n * 100) if expected_n > 0 else 0.0
         analysis["missing_event_count"] = max(0, expected_n - analysis.get("report_event_count", 0))

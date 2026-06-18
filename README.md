@@ -29,6 +29,12 @@ Analyze logs from a directory pattern:
 python analyze_ddi_log.py --log-dir . --pattern "ddi_relay.log.2026-06-*" --uuid D5CAAF0615E18000FC8B3004
 ```
 
+Analyze UUIDs with different report intervals:
+
+```powershell
+python analyze_ddi_log.py --log-dir . --pattern "ddi_relay.log.2026-06-*" --uuid D5CAAF0615E18000FC8B3004 076AAD0615E18000FC8B3004 34394708333030314A002900 343947083330303142002E00 --expected-interval-by-uuid 34394708333030314A002900=5 343947083330303142002E00=5
+```
+
 Analyze a remote log over SSH:
 
 ```powershell
@@ -53,6 +59,7 @@ By default, the script writes:
 
 Important summary columns:
 
+- `expected_interval_minutes`: expected report interval used for that UUID.
 - `expected_event_count`: expected number of report events from the observation
   window and expected interval.
 - `report_event_count`: actual grouped report events found.
@@ -80,8 +87,9 @@ being treated as full 24-hour periods.
 - `--merge-window-seconds`: seconds used to group nearby raw messages into one
   report event. Default: `2`.
 - `--expected-interval-minutes`: expected report interval. Default: `30`.
+- `--expected-interval-by-uuid`: override interval for specific UUIDs using
+  `UUID=minutes`, for example `34394708333030314A002900=5`.
 - `--alert-threshold-minutes`: gap threshold used for suspicious gap detection.
   Default: `45`.
 - `--export-summary-only`: write only the summary CSV.
 - `--out-dir`: output directory. Default: current directory.
-

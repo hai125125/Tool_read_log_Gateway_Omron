@@ -1,3 +1,5 @@
-uuid,expected_event_count,report_event_count,delivery_rate_percent,missing_event_count,avg_daily_voltage_drop
-076AAD0615E18000FC8B3004,144,106,73.61,38,0.007562
-D5CAAF0615E18000FC8B3004,144,125,86.81,19,0.017317
+uuid,expected_interval_minutes,expected_event_count,report_event_count,delivery_rate_percent,missing_event_count,avg_daily_voltage_drop
+34394708333030314A002900,5,1147,248,21.62,899,0.008915
+343947083330303142002E00,5,1147,660,57.54,487,0.011117
+076AAD0615E18000FC8B3004,30,192,146,76.04,46,0.007806
+D5CAAF0615E18000FC8B3004,30,192,171,89.06,21,0.014423
