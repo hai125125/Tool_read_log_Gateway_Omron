@@ -1,0 +1,47 @@
+{
+  "mqtt": {
+    "host": "CHANGE_ME",
+    "port": 1885,
+    "topic": "node_send",
+    "keepalive": 60
+  },
+  "status": {
+    "status_interval_sec": 30,
+    "online_factor": 1.5,
+    "offline_factor": 3.0
+  },
+  "devices": [
+    {
+      "uuid": "34394708333030314A002900",
+      "name": "japan_1",
+      "type": "japan_sensor",
+      "expected_interval_sec": 300,
+      "enabled": true,
+      "note": "Japan sensor, expected every 5 minutes"
+    },
+    {
+      "uuid": "343947083330303142002E00",
+      "name": "japan_2",
+      "type": "japan_sensor",
+      "expected_interval_sec": 300,
+      "enabled": true,
+      "note": "Japan sensor, expected every 5 minutes"
+    },
+    {
+      "uuid": "076AAD0615E18000FC8B3004",
+      "name": "omron_30min_1",
+      "type": "omron_30min",
+      "expected_interval_sec": 1800,
+      "enabled": true,
+      "note": "Omnron sensor, expected every 30 minutes"
+    },
+    {
+      "uuid": "D5CAAF0615E18000FC8B3004",
+      "name": "omron_30min_2",
+      "type": "omron_30min",
+      "expected_interval_sec": 1800,
+      "enabled": true,
+      "note": "Omnron sensor, expected every 30 minutes"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-uuid,expected_interval_minutes,expected_event_count,report_event_count,delivery_rate_percent,missing_event_count,avg_daily_voltage_drop
-34394708333030314A002900,5,1147,248,21.62,899,0.008915
-343947083330303142002E00,5,1147,660,57.54,487,0.011117
-076AAD0615E18000FC8B3004,30,192,146,76.04,46,0.007806
-D5CAAF0615E18000FC8B3004,30,192,171,89.06,21,0.014423
+uuid,name,type,threshold_temp,expected_interval_minutes,current_expected_interval_sec,expected_event_count,report_event_count,delivery_rate_percent,missing_event_count,total_messages,ok_count,warning_count,delay_count,unknown_temp_count,max_gap_sec,avg_gap_sec,last_seen,last_temperature,avg_daily_voltage_drop
+076AAD0615E18000FC8B3004,omron_2,omron,180.0,30,1800,470,387,82.34,83,387,308,47,16,15,10800.154,2235.487,2026-06-23T12:52:54.534000,109.9,0.007987
+D5CAAF0615E18000FC8B3004,omron_1,omron,180.0,30,1800,480,429,89.38,51,429,366,41,5,16,7200.128,2016.749,2026-06-23T12:50:28.173000,116.8,0.010329
+34394708333030314A002900,japan_sensor_1,japan_sensor,120.0,30,1800,631,595,94.29,36,595,545,22,5,22,5401.968,1451.986,2026-06-23T12:56:55.275000,102.0,0.005597
+343947083330303142002E00,japan_sensor_2,japan_sensor,120.0,30,1800,1886,1791,94.96,95,1791,1676,28,24,62,5103.951,481.492,2026-06-23T12:51:23.480000,113.1999,0.013644
